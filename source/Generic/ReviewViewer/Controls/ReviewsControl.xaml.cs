@@ -25,6 +25,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
+using System.Windows.Threading;
 
 namespace ReviewViewer.Controls
 {
@@ -42,10 +43,10 @@ namespace ReviewViewer.Controls
 
         private static readonly Regex steamLinkRegex = new Regex(@"^https?:\/\/store\.steampowered\.com\/app\/(\d+)", RegexOptions.Compiled);
         private readonly DesktopView ActiveViewAtCreation;
+        private readonly DispatcherTimer timer;
         IPlayniteAPI PlayniteApi;
         public ReviewViewerSettingsViewModel SettingsModel { get; }
         
-        private string currentSteamId;
         private Game currentGame;
 
         public enum ReviewSearchType { All, Positive, Negative };
@@ -192,6 +193,17 @@ namespace ReviewViewer.Controls
             }
         }
 
+        private string reviewPostedDate;
+        public string ReviewPostedDate
+        {
+            get => reviewPostedDate;
+            set
+            {
+                reviewPostedDate = value;
+                OnPropertyChanged();
+            }
+        }
+
         private int selectedReviewIndex;
         public int SelectedReviewIndex
         {
@@ -226,6 +238,15 @@ namespace ReviewViewer.Controls
 
             ReviewHelpfulnessHelpful = string.Format(ResourceProvider.GetString("LOCReview_Viewer_ReviewHelpfulnessHelpfulFormat"), SelectedReview.VotesUp);
             ReviewHelpfulnessFunny = string.Format(ResourceProvider.GetString("LOCReview_Viewer_ReviewHelpfulnessFunnyFormat"), SelectedReview.VotesFunny);
+
+            ReviewPostedDate = string.Format(ResourceProvider.GetString("LOCReview_Viewer_ReviewPostedDateLabel"), UnixTimeStampToFormattedString(SelectedReview.TimestampUpdated));
+        }
+
+        public static string UnixTimeStampToFormattedString(double unixTimeStamp)
+        {
+            var dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            dtDateTime = dtDateTime.AddSeconds(unixTimeStamp).ToLocalTime();
+            return dtDateTime.ToString("dd MMM yyyy");
         }
 
         private Review selectedReview;
@@ -326,7 +347,7 @@ namespace ReviewViewer.Controls
         {
             selectedReviewSearch = ReviewSearchType.Positive;
             SummaryGrid.Visibility = Visibility.Collapsed;
-            Task.Run(() => UpdateReviewsContext());
+            UpdateReviewsContext();
         }
 
         public RelayCommand<object> SwitchNegativeReviewsCommand
@@ -341,7 +362,7 @@ namespace ReviewViewer.Controls
         {
             selectedReviewSearch = ReviewSearchType.Negative;
             SummaryGrid.Visibility = Visibility.Collapsed;
-            Task.Run(() => UpdateReviewsContext());
+            UpdateReviewsContext();
         }
 
         public ReviewsControl(string pluginUserDataPath, string steamApiLanguage, ReviewViewerSettingsViewModel settings, IPlayniteAPI playniteApi)
@@ -357,6 +378,16 @@ namespace ReviewViewer.Controls
             {
                 ActiveViewAtCreation = PlayniteApi.MainView.ActiveDesktopView;
             }
+
+            timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromMilliseconds(220);
+            timer.Tick += new EventHandler(TimerUpdateContext);
+        }
+
+        private void TimerUpdateContext(object sender, EventArgs e)
+        {
+            timer.Stop();
+            UpdateReviewsContext();
         }
 
         private void ResetBindingValues()
@@ -377,6 +408,7 @@ namespace ReviewViewer.Controls
 
         public override void GameContextChanged(Game oldContext, Game newContext)
         {
+            timer.Stop();
             //The GameContextChanged method is rised even when the control
             //is not in the active view. To prevent unecessary processing we
             //can stop processing if the active view is not the same one was
@@ -387,7 +419,6 @@ namespace ReviewViewer.Controls
                 return;
             }
 
-            currentSteamId = null;
             if (newContext == null)
             {
                 ResetBindingValues();
@@ -395,7 +426,7 @@ namespace ReviewViewer.Controls
             }
 
             currentGame = newContext;
-            Task.Run(() => UpdateReviewsContext());
+            timer.Start();
         }
 
         public void UpdateReviewsContext()
@@ -423,15 +454,12 @@ namespace ReviewViewer.Controls
                 {
                     return;
                 }
-                
+
+                var currentSteamId = Steam.GetGameSteamId(currentGame, true);
                 if (currentSteamId == null)
                 {
-                    var currentSteamId = Steam.GetGameSteamId(currentGame, true);
-                    if (currentSteamId == null)
-                    {
-                        MainPanelVisibility = Visibility.Collapsed;
-                        return;
-                    }
+                    MainPanelVisibility = Visibility.Collapsed;
+                    return;
                 }
 
                 var uri = string.Format(reviewsApiMask, currentSteamId, steamApiLanguage, reviewSearchType);
@@ -450,11 +478,18 @@ namespace ReviewViewer.Controls
             {
                 logger.Error(e, $"Error deserializing file {gameDataPath}. Error: {e.Message}.");
             }
-            
+
+            if (Reviews.Success != 1)
+            {
+                logger.Debug($"Deserialized json in {gameDataPath} had Success value {Reviews.Success}.");
+                return;
+            }
+
             try
             {
                 if (Reviews.QuerySummary.NumReviews == 0)
                 {
+                    logger.Debug($"Deserialized json in {gameDataPath} had 0 reviews.");
                     return;
                 }
             }
@@ -473,24 +508,6 @@ namespace ReviewViewer.Controls
             TotalReviewsAvailable = Reviews.QuerySummary.NumReviews;
             CalculateUserScore();
             MainPanelVisibility = Visibility.Visible;
-        }
-
-        private void GetSteamIdFromLinks(Game game)
-        {
-            if (game.Links == null)
-            {
-                return;
-            }
-
-            foreach (Link gameLink in game.Links)
-            {
-                var linkMatch = steamLinkRegex.Match(gameLink.Url);
-                if (linkMatch.Success)
-                {
-                    currentSteamId = linkMatch.Groups[1].Value;
-                    return;
-                }
-            }
         }
 
         private void CalculateUserScore()
