@@ -321,9 +321,12 @@ namespace InstallationStatusUpdater
             }
             else
             {
+                if (game.Platforms != null && game.Platforms.Any(x => x.Name == "PC (Windows)"))
+                {
+                    return false;
+                }
                 return DetectIsRomInstalled(game.Roms[0], installDirectory);
             }
-
             return false;
         }
 
@@ -468,6 +471,11 @@ namespace InstallationStatusUpdater
                 return true;
             }
 
+            if (game.Platforms !=null && game.Platforms.Any(x => x.Name != "PC (Windows)"))
+            {
+                return true;
+            }
+            
             return false;
         }
 
