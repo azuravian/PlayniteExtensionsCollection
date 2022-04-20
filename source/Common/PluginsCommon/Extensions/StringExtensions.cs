@@ -82,7 +82,7 @@ namespace System
             return source.Remove(source.LastIndexOf(value, comp));
         }
 
-        public static string ToTileCase(this string source, CultureInfo culture = null)
+        public static string ToTitleCase(this string source, CultureInfo culture = null)
         {
             if (source.IsNullOrEmpty())
             {
@@ -201,6 +201,26 @@ namespace System
             }
 
             return HttpUtility.UrlDecode(str);
+        }
+
+        public static string Base64Encode(this string str)
+        {
+            if (string.IsNullOrEmpty(str))
+            {
+                return null;
+            }
+
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(str));
+        }
+
+        public static string Base64Decode(this string str)
+        {
+            if (string.IsNullOrEmpty(str))
+            {
+                return null;
+            }
+
+            return Encoding.UTF8.GetString(Convert.FromBase64String(str));
         }
 
         public static string GetMatchModifiedName(this string str)

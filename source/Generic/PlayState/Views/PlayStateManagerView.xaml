@@ -1,0 +1,90 @@
+﻿<UserControl x:Class="PlayState.Views.PlayStateManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:PlayState.Views"
+             xmlns:con="clr-namespace:PlayState.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="1200">
+    <Grid Margin="10">
+        <Grid.Resources>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}" />
+            <con:SuspendModeToStringConverter x:Key="SuspendModeToStringConverter" />
+            <con:BoolToYesNoConverter x:Key="BoolToYesNoConverter" />
+        </Grid.Resources>
+        <ScrollViewer>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                    <TextBlock VerticalAlignment="Center"
+                               WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Hyperlink Command="{Binding NavigateBackCommand}">
+                            <TextBlock Text="&#xea5c;"
+                                       FontFamily="{DynamicResource FontIcoFont}"
+                                       FontSize="26" />
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock Text="{DynamicResource LOCPlayState_PlayStateManagerViewHeaderLabel}"
+                               VerticalAlignment="Center"
+                               Margin="10,0,0,0" FontSize="18"/>
+                </StackPanel>
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="300" />
+                    </Grid.ColumnDefinitions>
+                    <ListView Name="PlayStateDataList"
+                          SelectedItem ="{Binding SelectedData}"
+                          SelectionMode="Single" Margin="0,0,10,0"
+                          ItemsSource="{Binding PlayStateDataCollection}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Width="250" Header="{DynamicResource LOCPlayState_ManagerGameLabel}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Game.Name}" VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                                <GridViewColumn Width="Auto" Header="{DynamicResource LOCPlayState_ManagerIsSuspendedLabel}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding IsSuspended, Converter={StaticResource BoolToYesNoConverter}}" VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                                <GridViewColumn Width="250"  Header="{DynamicResource LOCPlayState_ManagerSuspendModeLabel}">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SuspendMode, Converter={StaticResource SuspendModeToStringConverter}}" VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                            </GridView>
+                        </ListView.View>
+                        <ListView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="{DynamicResource LOCPlayState_ManagerSwitchGameStateLabel}"
+                                          Command="{Binding SwitchGameStateCommand}" />
+                                <MenuItem Header="{DynamicResource LOCPlayState_ManagerSetActiveGameLabel}"
+                                          Visibility="{Binding IsSelectedDataCurrentGame, Converter={StaticResource InvertedBooleanToVisibilityConverter}}"
+                                          Command="{Binding SetActiveGameCommand}" />
+                            </ContextMenu>
+                        </ListView.ContextMenu>
+                    </ListView>
+                    <StackPanel Grid.Column="1"
+                            Visibility="{Binding CurrentGame, Converter={StaticResource NullToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{DynamicResource LOCPlayState_ManagerActiveGameLabel}" />
+                            <TextBlock Margin="5,0,0,0" Text="{Binding CurrentGame.Name}" />
+                        </StackPanel>
+
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

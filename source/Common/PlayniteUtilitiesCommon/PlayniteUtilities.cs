@@ -18,6 +18,23 @@ namespace PlayniteUtilitiesCommon
             return AddFeatureToGame(PlayniteApi, game, feature);
         }
 
+        public static bool GetGameHasFeature(Game game, string featureName, bool ignoreOrdinalCase = false)
+        {
+            if (!game.Features.HasItems())
+            {
+                return false;
+            }
+            
+            if (ignoreOrdinalCase)
+            {
+                return game.Features.Any(x => x.Name.Equals(featureName, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                return game.Features.Any(x => x.Name == featureName);
+            }
+        }
+
         public static bool AddFeatureToGame(IPlayniteAPI PlayniteApi, Game game, GameFeature feature)
         {
             if (game.Features == null)
@@ -95,9 +112,8 @@ namespace PlayniteUtilitiesCommon
                 return false;
             }
 
-            if (game.FeatureIds.Any(x => x == feature.Id))
+            if (game.FeatureIds.Remove(feature.Id))
             {
-                game.FeatureIds.Remove(feature.Id);
                 PlayniteApi.Database.Games.Update(game);
                 return true;
             }
@@ -198,6 +214,9 @@ namespace PlayniteUtilitiesCommon
             return false;
         }
 
+        private const string pcWinPlatformName = "PC (Windows)";
+        private const string pcPlatformName = "PC";
+        private const string pcSpecId = "pc_windows";
         public static bool IsGamePcGame(Game game)
         {
             if (!game.Platforms.HasItems())
@@ -205,8 +224,8 @@ namespace PlayniteUtilitiesCommon
                 return false;
             }
 
-            if (game.Platforms.Any(x => x.Name == "PC (Windows)" ||
-                      !string.IsNullOrEmpty(x.SpecificationId) && x.SpecificationId == "pc_windows"))
+            if (game.Platforms.Any(x => x.Name == pcWinPlatformName || x.Name == pcPlatformName ||
+                      !string.IsNullOrEmpty(x.SpecificationId) && x.SpecificationId == pcSpecId))
             {
                 return true;
             }
